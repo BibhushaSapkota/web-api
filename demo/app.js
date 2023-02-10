@@ -1,23 +1,28 @@
 require('dotenv').config()
 const express = require('express')
 const logger = require('./logger')
-const app = express()
-const mongoose = require('mongoose')//
-const port = 3000
+const cors = require('cors')
+const mongoose = require('mongoose')
 const path = require('path')
 const books_routes = require('./routes/books-routes')
 const category_routes = require('./routes/category-routes')
-const user_routes=require('./routes/user-routes')
-const auth=require('./middleware/auth')
-const category = require('./models/category')
+const user_routes = require('./routes/user-routes')
+const profile_routes = require('./routes/profile-routes')
+const auth = require('./middleware/auth')
+
+const app = express()
+app.use(cors())
 
 
-mongoose.connect('mongodb://127.0.0.1:27017/books')
+const DB_URI = (process.env.NODE_ENV === 'test') 
+    ? process.env.TEST_DB_URI 
+    : process.env.DB_URI
+console.log(DB_URI)
+
+mongoose.connect(DB_URI)
     .then(() => {
         console.log('connected to mongodb server')
-        app.listen(port, () => {
-            console.log(`App is running on port: ${port} `)
-        })
+        
     }).catch((err) => console.log(err))
 
 
@@ -37,8 +42,9 @@ app.get('^/$|index(.html)?', (req, res) => {
 })
 
 //router level middleware ....sequence ma hunu parcha
-app.use('/users',user_routes)
-//app.use(auth.verifyUser)
+app.use('/users', user_routes)
+app.use(auth.verifyUser)
+app.use('/profile', auth.verifyUser, profile_routes)
 app.use('/category', category_routes)
 app.use('/books', books_routes)
 
@@ -67,8 +73,9 @@ app.use('/books', books_routes)
 
 app.use((err, req, res, next) => {
     console.log(err.stack)
-    if(res.statusCode==200)res.status(500)
+    if (res.statusCode == 200) res.status(500)
     res.json({ "err": err.message })
 })
 
 // 
+module.exports = app
